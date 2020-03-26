@@ -19,6 +19,7 @@ class Mode:
         self.name = name
         self.protocol = protocol
         self.applications = applications
+        self.partitions = []
 
     def get_partition_size(self, processor_id):
         return self.partitions[processor_id]

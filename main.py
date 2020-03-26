@@ -1,11 +1,17 @@
 import random
+import time
 from mode import Mode, Protocol
 from task import Task
 from application import Application
 
+# System Constants
+SPM_SIZE = 2048
+SPM_ALLOCATION_UNIT = 4
+
+# Global Variables
 modes = []
 
-def init():
+def initialize():
     t1_1 = Task(1, random.randrange(0, 5), random.randrange(3, 10))
     t1_2 = Task(2, random.randrange(0, 5), random.randrange(3, 10))
     t1_3 = Task(3, random.randrange(0, 5), random.randrange(3, 10))
@@ -22,7 +28,7 @@ def init():
     a2_1 = Application('a2_1', [t2_1, t2_2])
     a2_2 = Application('a2_2', [t2_3, t2_4])
     applications = [a2_1, a2_2]
-    modes.append(Mode(2, 'B', Protocol.EMERGENCY_CHANGE, applications))
+    modes.append(Mode(2, 'B', Protocol.IDLE_AND_CHANGE, applications))
 
     t3_1 = Task(9, random.randrange(0, 5), random.randrange(3, 10))
     t3_2 = Task(10, random.randrange(0, 5), random.randrange(3, 10))
@@ -30,23 +36,78 @@ def init():
     t3_4 = Task(12, random.randrange(0, 5), random.randrange(3, 10))
     a3_1 = Application('a3_1', [t3_1, t3_2])
     a3_2 = Application('a3_2', [t3_3, t3_4])
-    applications = [a2_1, a2_2]
-    modes.append(Mode(3, 'C', Protocol.EMERGENCY_CHANGE, applications))
+    applications = [a3_1, a3_2]
+    modes.append(Mode(3, 'C', Protocol.FILL_AND_CHANGE, applications))
 
-def allocate_partitions(mode):
+    t4_1 = Task(13, random.randrange(0, 5), random.randrange(3, 10))
+    t4_2 = Task(14, random.randrange(0, 5), random.randrange(3, 10))
+    t4_3 = Task(15, random.randrange(0, 5), random.randrange(3, 10))
+    t4_4 = Task(16, random.randrange(0, 5), random.randrange(3, 10))
+    a4_1 = Application('a4_1', [t4_1, t4_2])
+    a4_2 = Application('a4_2', [t4_3, t4_4])
+    applications = [a4_1, a4_2]
+    modes.append(Mode(4, 'D', Protocol.FAST_MODE_CHANGE, applications))
+
+    t5_1 = Task(17, random.randrange(0, 5), random.randrange(3, 10))
+    t5_2 = Task(18, random.randrange(0, 5), random.randrange(3, 10))
+    t5_3 = Task(19, random.randrange(0, 5), random.randrange(3, 10))
+    t5_4 = Task(10, random.randrange(0, 5), random.randrange(3, 10))
+    a5_1 = Application('a5_1', [t5_1, t5_2])
+    a5_2 = Application('a5_2', [t5_3, t5_4])
+    applications = [a5_1, a5_2]
+    modes.append(Mode(5, 'E', Protocol.REDUCED_TRASIENT_PHASE_CHANGE, applications))
+
+def allocate_spm():
+    for i in range(len(modes)):
+        if i > 0:
+            prev_mode = modes[i - 1]
+        next_mode = modes[i]
+        print("Mode %d: %s" % (i, next_mode.protocol))
+        num_of_partitions = len(next_mode.applications)
+        remaining_spm_size = SPM_SIZE
+        random.seed(i)
+
+        if next_mode.protocol == Protocol.EMERGENCY_CHANGE:
+            for j in range(num_of_partitions):
+                min_spm_size = get_min_spm_size(next_mode.applications[j], 0, 0)
+                if remaining_spm_size >= min_spm_size:
+                    next_mode.partitions.append(min_spm_size)
+                    remaining_spm_size = remaining_spm_size - min_spm_size
+                else:
+                    print("Failed allocation: application [%d] on mode [%d]" % (j, i))
+            next_mode.reserved_spm_size = remaining_spm_size
+        elif next_mode.protocol == Protocol.IDLE_AND_CHANGE:
+            continue
+        elif next_mode.protocol == Protocol.FILL_AND_CHANGE:
+            continue
+        elif next_mode.protocol == Protocol.FAST_MODE_CHANGE:
+            continue
+        elif next_mode.protocol == Protocol.REDUCED_TRASIENT_PHASE_CHANGE:
+            continue
     return None
 
+#TODO: Implementation of this function
+def get_min_spm_size(application, epsilon, sigma):
+    i = random.random()
+    i = int(i * 2048 / 2)
+    return i
+
 def print_result():
+    print('')
     for mode in modes:
         print('mode %d. %s' % (mode.id, mode.name))
         print('partition: ')
         for partition in mode.partitions:
-            print('| %d' % (partition), end='')
-        print('\n')
+            print('| %d ' % (partition), end='')
+        print('|\n')
 
-init()
-for mode in modes:
-    allocate_partitions(mode)
+# Initialize the system environment
+initialize()
+
+# Allocate SPM sequentially for all modes
+allocate_spm()
+
+# Print the allocation result
 print_result()
 
 
