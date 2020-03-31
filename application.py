@@ -19,6 +19,6 @@ class Application:
     def get_yipsilon(self):
         min = sys.maxsize
         for task in self.tasks:
-            if task.deadline > min:
+            if task.deadline <= min:
                 min = task.deadline
         return min

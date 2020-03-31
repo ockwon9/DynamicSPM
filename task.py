@@ -1,3 +1,5 @@
+import random
+
 class Task:
     id = 0
     offset = 0
@@ -10,5 +12,6 @@ class Task:
         self.min_arrival_time = min_arrival_time
         self.deadline = min_arrival_time
 
+    #TODO: Implement this function using actual measured data
     def get_execution_time(self, size_of_spm):
-        return 1
+        return random.randrange(4, 7)

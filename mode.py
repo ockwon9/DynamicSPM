@@ -19,3 +19,10 @@ class Mode:
 
     def set_partition_size(self, application_id, partition_size):
         self.applications[application_id].allocated_partition_size = partition_size
+
+    def get_max_yipsilon(self):
+        max = 0
+        for application in self.applications:
+            if application.get_yipsilon() <= max:
+                max = application.get_yipsilon()
+        return max
