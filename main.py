@@ -3,6 +3,7 @@ import time
 from mode import Mode, Protocol
 from task import Task
 from application import Application
+from event import Event, EVENT
 
 # System Constants
 SPM_SIZE = 2048
@@ -67,27 +68,72 @@ def allocate_spm():
         remaining_spm_size = SPM_SIZE
         random.seed(i)
 
-        if next_mode.protocol == Protocol.EMERGENCY_CHANGE:
+        if next_mode.protocol == Protocol.EMERGENCY_CHANGE or \
+                next_mode.protocol == Protocol.IDLE_AND_CHANGE or \
+                next_mode.protocol == Protocol.FILL_AND_CHANGE:
             for j in range(num_of_partitions):
                 min_spm_size = get_min_spm_size(next_mode.applications[j], 0, 0)
                 if remaining_spm_size >= min_spm_size:
                     next_mode.partitions.append(min_spm_size)
                     remaining_spm_size = remaining_spm_size - min_spm_size
                 else:
-                    print("Failed allocation: application [%d] on mode [%d]" % (j, i))
+                    print("SPM allocation failed in application [%d] on mode [%d]" % (j, i))
             next_mode.reserved_spm_size = remaining_spm_size
-        elif next_mode.protocol == Protocol.IDLE_AND_CHANGE:
-            continue
-        elif next_mode.protocol == Protocol.FILL_AND_CHANGE:
-            continue
         elif next_mode.protocol == Protocol.FAST_MODE_CHANGE:
-            continue
+            # Initialize required variables for the SPM allocation
+            remaining_spm_size = prev_mode.reserved_spm_size
+            event_list = []
+            for processor_index in range(len(prev_mode.applications)):
+                 event_list.append(Event(prev_mode.applications[processor_index].get_longest_execution_time(), EVENT.LAST_JOB_FINISHED, processor_index))
+                event_list.append(Event(prev_mode.applications[processor_index].get_shortest_period(), EVENT.FIRST_JOB_RELEASED, processor_index))
+
+            # Start the allocation assuming the mode change signal is arrived at t=0
+            t = 0
+            while event_list:
+                event = get_next_event(event_list)
+                t = event.time
+                if event.type == EVENT.LAST_JOB_FINISHED:
+                    remaining_spm_size = remaining_spm_size + prev_mode.partitions[event.processor_index]
+                elif event.type == EVENT.FIRST_JOB_RELEASED:
+                    min_spm_size = get_min_spm_size(next_mode.applications[event.processor_index], \
+                                                    prev_modeapplication.get_shortest_period(), 0)
+                    if min_spm_size <= remaining_spm_size:
+                        next_mode.partitions[event.processor_index] = min_spm_size
+                    else:
+                        next_finish_event = get_next_finish_event(event_list)
+                        delta = event.delta + (next_finish_event.time - t)
+                        event_list.append(Event(next_finish_event.time, EVENT.DELAYED_FIRST_JOB_RESUMED, \
+                                                event.processor_index, delta))
+                elif event.type == EVENT.DELAYED_FIRST_JOB_RESUMED:
+                    t = event.time
+                    for ev in event_list:
+                        if ev.time <= current_time and ev.type == EVENT.LAST_JOB_FINISHED:
+                            event_list.pop(ev)
+                            remaining_spm_size = remaining_spm_size + prev_mode.partitions[ev.processor_index]
+
+                    min_spm_size = get_min_spm_size(next_mode.applications[event.processor_index], \
+                                                    prev_modeapplication.get_shortest_period(), event.delta)
+                    if min_spm_size <= remaining_spm_size:
+                        next_mode.partitions[event.processor_index] = min_spm_size
+                    else:
+                        next_finish_event = get_next_finish_event(event_list)
+                        delta = event.delta + (next_finish_event.time - t)
+                        event_list.append(Event(next_finish_event.time, EVENT.DELAYED_FIRST_JOB_RESUMED, \
+                                                event.processor_index, next_finish_event.time - t))
+                else:
+                    continue
         elif next_mode.protocol == Protocol.REDUCED_TRASIENT_PHASE_CHANGE:
             continue
     return None
 
 #TODO: Implementation of this function
+def is_schedulable(application, epsilon, sigma):
+    return False
+
+#TODO: Implementation of this function
 def get_min_spm_size(application, epsilon, sigma):
+    if is_schedulable(application, epsilon, sigma):
+        print("Schedulable!!")
     i = random.random()
     i = int(i * 2048 / 2)
     return i

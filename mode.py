@@ -12,7 +12,7 @@ class Mode:
     name = ''
     protocol = 1
     applications = None
-    partitions = []
+    partitions = {}
 
     def __init__(self, id, name, protocol, applications):
         self.id = id
