@@ -6,9 +6,9 @@ class EVENT(Enum):
     DELAYED_FIRST_JOB_RESUMED = 3
 
 class Event:
-    def __init__(self, time, type, processor_index, delta = 0):
+    def __init__(self, time, type, application_index, delta = 0):
         self.time = time
         self.type = type
         self.delta = delta
-        self.processor_index = processor_index
+        self.application_index = application_index
 

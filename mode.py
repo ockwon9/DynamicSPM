@@ -8,18 +8,14 @@ class Protocol(Enum):
     FAST_MODE_CHANGE = 5
 
 class Mode:
-    id = 0
-    name = ''
-    protocol = 1
-    applications = None
-    partitions = {}
-
     def __init__(self, id, name, protocol, applications):
         self.id = id
         self.name = name
         self.protocol = protocol
         self.applications = applications
-        self.partitions = []
 
-    def get_partition_size(self, processor_id):
-        return self.partitions[processor_id]
+    def get_partition_size(self, application_id):
+        return self.applications[application_id].allocated_partition_size
+
+    def set_partition_size(self, application_id, partition_size):
+        self.applications[application_id].allocated_partition_size = partition_size

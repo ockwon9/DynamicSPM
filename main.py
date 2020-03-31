@@ -1,5 +1,6 @@
 import random
 import time
+import sys
 from mode import Mode, Protocol
 from task import Task
 from application import Application
@@ -64,6 +65,9 @@ def allocate_spm():
             prev_mode = modes[i - 1]
         next_mode = modes[i]
         print("Mode %d: %s" % (i, next_mode.protocol))
+
+        # Note that num_of_application == num_of_partitions is same
+        # because we assume a core executes only one application
         num_of_partitions = len(next_mode.applications)
         remaining_spm_size = SPM_SIZE
         random.seed(i)
@@ -74,7 +78,7 @@ def allocate_spm():
             for j in range(num_of_partitions):
                 min_spm_size = get_min_spm_size(next_mode.applications[j], 0, 0)
                 if remaining_spm_size >= min_spm_size:
-                    next_mode.partitions.append(min_spm_size)
+                    next_mode.set_partition_size(j, min_spm_size)
                     remaining_spm_size = remaining_spm_size - min_spm_size
                 else:
                     print("SPM allocation failed in application [%d] on mode [%d]" % (j, i))
@@ -84,8 +88,8 @@ def allocate_spm():
             remaining_spm_size = prev_mode.reserved_spm_size
             event_list = []
             for processor_index in range(len(prev_mode.applications)):
-                 event_list.append(Event(prev_mode.applications[processor_index].get_longest_execution_time(), EVENT.LAST_JOB_FINISHED, processor_index))
-                event_list.append(Event(prev_mode.applications[processor_index].get_shortest_period(), EVENT.FIRST_JOB_RELEASED, processor_index))
+                event_list.append(Event(prev_mode.applications[processor_index].get_longest_execution_time(), EVENT.LAST_JOB_FINISHED, processor_index))
+                event_list.append(Event(prev_mode.applications[processor_index].get_yipsilon(), EVENT.FIRST_JOB_RELEASED, processor_index))
 
             # Start the allocation assuming the mode change signal is arrived at t=0
             t = 0
@@ -93,10 +97,10 @@ def allocate_spm():
                 event = get_next_event(event_list)
                 t = event.time
                 if event.type == EVENT.LAST_JOB_FINISHED:
-                    remaining_spm_size = remaining_spm_size + prev_mode.partitions[event.processor_index]
+                    remaining_spm_size = remaining_spm_size + prev_mode.get_partition_size(event.application_index)
                 elif event.type == EVENT.FIRST_JOB_RELEASED:
                     min_spm_size = get_min_spm_size(next_mode.applications[event.processor_index], \
-                                                    prev_modeapplication.get_shortest_period(), 0)
+                                                    prev_modeapplication.get_yipsilon(), 0)
                     if min_spm_size <= remaining_spm_size:
                         next_mode.partitions[event.processor_index] = min_spm_size
                     else:
@@ -112,7 +116,7 @@ def allocate_spm():
                             remaining_spm_size = remaining_spm_size + prev_mode.partitions[ev.processor_index]
 
                     min_spm_size = get_min_spm_size(next_mode.applications[event.processor_index], \
-                                                    prev_modeapplication.get_shortest_period(), event.delta)
+                                                    prev_modeapplication.get_yipsilon(), event.delta)
                     if min_spm_size <= remaining_spm_size:
                         next_mode.partitions[event.processor_index] = min_spm_size
                     else:
@@ -124,7 +128,15 @@ def allocate_spm():
                     continue
         elif next_mode.protocol == Protocol.REDUCED_TRASIENT_PHASE_CHANGE:
             continue
-    return None
+
+def get_next_event(event_list):
+    result_index = 0
+    min = sys.maxsize
+    for i in range(len(event_list)):
+        if event_list[i].time <= min:
+            min = event_list[i].time
+            result_index = i
+    return event_list[result_index]
 
 #TODO: Implementation of this function
 def is_schedulable(application, epsilon, sigma):
