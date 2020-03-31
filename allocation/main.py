@@ -1,10 +1,10 @@
 import random
 import time
 import sys
-from mode import Mode, Protocol
-from task import Task
-from application import Application
-from event import Event, EVENT
+from allocation.mode import Mode, Protocol
+from allocation.task import Task
+from allocation.application import Application
+from allocation.event import Event, EVENT
 
 # System Constants
 SPM_SIZE = 2048
